@@ -12,8 +12,7 @@ import Card from "@/components/ui/Card";
  */
 export default function ConsumptionTypeSelector({ tipoAtivo, onChangeTipo, dadosDisponiveis }) {
     const tipos = [
-        { id: 'agua_fria', label: 'Água Fria', icon: Droplets, color: 'text-blue-400', bgColor: 'bg-blue-900/30' },
-        { id: 'agua_quente', label: 'Água Quente', icon: Droplets, color: 'text-orange-400', bgColor: 'bg-orange-900/30' },
+        { id: 'agua', label: 'Água', icon: Droplets, color: 'text-blue-400', bgColor: 'bg-blue-900/30' },
         { id: 'gas', label: 'Gás', icon: Flame, color: 'text-red-500', bgColor: 'bg-red-900/30' },
     ];
 
@@ -25,19 +24,18 @@ export default function ConsumptionTypeSelector({ tipoAtivo, onChangeTipo, dados
                     const Icon = tipo.icon;
                     const estaAtivo = tipoAtivo === tipo.id;
                     const temDados = dadosDisponiveis[tipo.id];
-                    
+
                     // Se não tiver dados, desabilita o botão e aplica estilo de desabilitado
                     return (
                         <button
                             key={tipo.id}
                             onClick={() => temDados && onChangeTipo(tipo.id)}
-                            className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all ${
-                                estaAtivo 
-                                    ? 'bg-gradient-to-r from-blue-600/80 to-indigo-700/80 shadow-lg text-white' 
-                                    : temDados 
+                            className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all ${estaAtivo
+                                    ? 'bg-gradient-to-r from-blue-600/80 to-indigo-700/80 shadow-lg text-white'
+                                    : temDados
                                         ? 'bg-gray-800/50 hover:bg-gray-700/50 text-gray-300'
                                         : 'bg-gray-800/30 text-gray-500 cursor-not-allowed'
-                            }`}
+                                }`}
                             disabled={!temDados}
                         >
                             <div className={`p-2 rounded-full ${estaAtivo ? 'bg-blue-700/50' : tipo.bgColor}`}>

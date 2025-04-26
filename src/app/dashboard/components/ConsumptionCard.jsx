@@ -6,19 +6,20 @@ import { Calendar } from "lucide-react";
  * Cartão de consumo do período
  * 
  * @param {Object} props
- * @param {number} props.consumo - Valor do consumo no período
- * @param {string} props.leituraAnterior - Valor da leitura anterior
- * @param {string} props.leituraAtual - Valor da leitura atual
+ * @param {Object} props.dadoRecente - Dados mais recentes do consumo
  * @param {string} props.unidadeMedida - Unidade de medida (m³, etc)
  * @param {string} props.titulo - Título personalizado do cartão
+ * @param {string} props.tipoConsumo - Tipo de consumo (agua, gas)
  */
 export default function ConsumptionCard({
-    consumo,
-    leituraAnterior,
-    leituraAtual,
+    dadoRecente,
     unidadeMedida = "m³",
-    titulo = "Consumo no Período"
+    titulo = "Consumo no Período",
+    tipoConsumo = "gas"
 }) {
+    // Verifica se estamos lidando com água
+    const isAgua = tipoConsumo === "agua";
+
     return (
         <Card
             variant="glow"
@@ -32,13 +33,13 @@ export default function ConsumptionCard({
             </div>
 
             <p className="text-3xl font-bold text-white mb-2 animate-fade-in delay-100">
-                {consumo} {unidadeMedida}
+                {isAgua ? dadoRecente.consumo_total || 0 : dadoRecente.consumo || 0} {unidadeMedida}
             </p>
 
             <p className="text-sm text-gray-400 animate-fade-in delay-200">
-                Variação: {leituraAnterior ?
-                    `${leituraAnterior} → ${leituraAtual}` :
-                    "Primeira leitura"}
+                Variação: {isAgua ?
+                    `${dadoRecente.leitura_anterior_fria !== null ? dadoRecente.leitura_anterior_fria : '-'} → ${dadoRecente.leitura_atual_fria || 0} (Fria)` :
+                    `${dadoRecente.leitura_anterior !== null ? dadoRecente.leitura_anterior : '-'} → ${dadoRecente.leitura_atual || 0}`}
             </p>
         </Card>
     );

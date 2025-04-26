@@ -24,11 +24,10 @@ export const obterDadosConsumo = async () => {
             if (response.ok) {
                 const data = await response.json();
 
-                // Processa todos os tipos de consumo (água fria, água quente e gás)
+                // Apenas organiza os dados mantendo a estrutura original da API
                 let dadosProcessados = {
-                    agua_fria: processarDadosConsumo(data.agua_fria || []),
-                    agua_quente: processarDadosConsumo(data.agua_quente || []),
-                    gas: processarDadosConsumo(data.gas || [])
+                    agua: data.agua || [],
+                    gas: data.gas || []
                 };
 
                 // Salva os dados no localStorage para acesso offline
@@ -50,8 +49,7 @@ export const obterDadosConsumo = async () => {
             if (response.data && response.data.data) {
                 // Converte o formato antigo para o novo formato
                 const dadosConvertidos = {
-                    agua_fria: response.data.data,
-                    agua_quente: [],
+                    agua: response.data.data,
                     gas: []
                 };
 
@@ -60,14 +58,14 @@ export const obterDadosConsumo = async () => {
                 return dadosConvertidos;
             }
 
-            return { agua_fria: [], agua_quente: [], gas: [] };
+            return { agua: [], gas: [] };
         }
     } catch (error) {
         console.error("Erro ao obter dados de consumo:", error);
 
         // Se tiver dados no localStorage, use-os como último recurso
         const dadosLocais = getDadosConsumoLocal();
-        if (dadosLocais && (dadosLocais.agua_fria.length > 0 || dadosLocais.agua_quente.length > 0 || dadosLocais.gas.length > 0)) {
+        if (dadosLocais && (dadosLocais.agua.length > 0 || dadosLocais.gas.length > 0)) {
             console.info("Usando dados em cache do localStorage");
             return dadosLocais;
         }
@@ -75,49 +73,6 @@ export const obterDadosConsumo = async () => {
         throw error;
     }
 };
-
-/**
- * Processa os dados de consumo brutos para o formato esperado pela UI
- * @param {Array} dadosBrutos - Dados brutos de consumo de um tipo específico
- * @returns {Array} Dados processados no formato da UI
- */
-function processarDadosConsumo(dadosBrutos) {
-    if (!Array.isArray(dadosBrutos)) return [];
-
-    // Transformar os dados no formato esperado pela UI
-    const dadosProcessados = dadosBrutos.map(item => ({
-        id: item.usuario_id + '-' + item.mes_de_referencia, // Criar ID único
-        valor_individual: item.valor_individual,
-        valor_total: item.valor_total,
-        consumo: item.consumo,
-        // Criar a estrutura esperada para compatibilidade com a UI existente
-        leitura_unidade_id: {
-            leitura: item.leitura_atual,
-            data_da_leitura: item.data_da_leitura,
-            mes_de_referencia: item.mes_de_referencia,
-            foto_id: item.foto_atual_id
-        },
-        // Adicionar informações da leitura anterior
-        leitura_anterior: {
-            leitura: item.leitura_anterior,
-            data_da_leitura: item.data_leitura_anterior,
-            foto_id: item.foto_anterior_id
-        },
-        // Informações adicionais
-        valor_medicao: item.valor_medicao,
-        valor_residual: item.valor_residual,
-        data_da_proxima_leitura: item.data_da_proxima_leitura
-    }));
-
-    // Ordenar dados por data de leitura (mais recente primeiro)
-    dadosProcessados.sort((a, b) => {
-        const dataA = new Date(a.leitura_unidade_id?.data_da_leitura || 0);
-        const dataB = new Date(b.leitura_unidade_id?.data_da_leitura || 0);
-        return dataB - dataA;
-    });
-
-    return dadosProcessados;
-}
 
 /**
  * Recupera os dados de consumo do localStorage
@@ -131,29 +86,42 @@ export const getDadosConsumoLocal = () => {
             try {
                 const dados = JSON.parse(dadosConsumo);
 
-                // Verifica se está no formato novo (com tipos separados)
-                if (dados && typeof dados === 'object' && ('agua_fria' in dados || 'agua_quente' in dados || 'gas' in dados)) {
-                    return dados;
+                // Verifica se está no formato novo (com tipos "agua" e "gas")
+                if (dados && typeof dados === 'object') {
+                    // Se tiver formato antigo com agua_fria, agua_quente e gas, converte para o novo
+                    if ('agua_fria' in dados || 'agua_quente' in dados) {
+                        return {
+                            agua: [...(dados.agua_fria || []), ...(dados.agua_quente || [])],
+                            gas: dados.gas || []
+                        };
+                    }
+
+                    // Se já estiver no formato "agua" e "gas", retorna diretamente
+                    if ('agua' in dados || 'gas' in dados) {
+                        return {
+                            agua: dados.agua || [],
+                            gas: dados.gas || []
+                        };
+                    }
                 }
 
                 // Se estiver no formato antigo (apenas array), converte para o novo formato
                 if (Array.isArray(dados)) {
                     return {
-                        agua_fria: dados,
-                        agua_quente: [],
+                        agua: dados,
                         gas: []
                     };
                 }
 
-                return { agua_fria: [], agua_quente: [], gas: [] };
+                return { agua: [], gas: [] };
             } catch (error) {
                 console.error("Erro ao processar dados de consumo:", error);
-                return { agua_fria: [], agua_quente: [], gas: [] };
+                return { agua: [], gas: [] };
             }
         }
     }
 
-    return { agua_fria: [], agua_quente: [], gas: [] };
+    return { agua: [], gas: [] };
 };
 
 /**
@@ -161,76 +129,49 @@ export const getDadosConsumoLocal = () => {
  * @returns {Object} Objeto com arrays de dados de demonstração por tipo
  */
 export const criarDadosDemonstracao = () => {
-    // Dados de exemplo para água fria
-    const dadosAguaFria = [{
-        id: 'demo-agua-fria-1',
-        valor_individual: 220.0,
-        valor_total: 225.0,
-        consumo: 15,
-        valor_medicao: 5.0,
-        valor_residual: 0.0,
-        leitura_unidade_id: {
-            leitura: 15,
-            data_da_leitura: '2025-03-17',
-            mes_de_referencia: '2025-02-17',
-            foto_id: null
-        },
-        leitura_anterior: {
-            leitura: null,
-            data_da_leitura: null,
-            foto_id: null
-        },
-        data_da_proxima_leitura: '2025-04-17'
-    }];
-
-    // Dados de exemplo para água quente
-    const dadosAguaQuente = [{
-        id: 'demo-agua-quente-1',
-        valor_individual: 180.0,
-        valor_total: 185.0,
-        consumo: 12,
-        valor_medicao: 5.0,
-        valor_residual: 0.0,
-        leitura_unidade_id: {
-            leitura: 12,
-            data_da_leitura: '2025-03-17',
-            mes_de_referencia: '2025-02-17',
-            foto_id: null
-        },
-        leitura_anterior: {
-            leitura: null,
-            data_da_leitura: null,
-            foto_id: null
-        },
-        data_da_proxima_leitura: '2025-04-17'
+    // Dados de exemplo para água no novo formato
+    const dadosAgua = [{
+        "usuario_id": "5f33de30-8c44-4d04-b1f3-ad4dc383fb31",
+        "mes_de_referencia": "2025-02-17",
+        "data_da_leitura": "2025-04-23",
+        "data_leitura_anterior": "2025-02-17",
+        "data_da_proxima_leitura": "2025-05-21",
+        "leitura_atual_fria": 3,
+        "leitura_anterior_fria": 3,
+        "leitura_atual_quente": 3,
+        "leitura_anterior_quente": 4,
+        "foto_atual_id_fria": null,
+        "foto_anterior_id_fria": null,
+        "foto_atual_id_quente": null,
+        "foto_anterior_id_quente": null,
+        "consumo_total": 1,
+        "valor_de_medicao": 5.0,
+        "valor_individual": 15.0,
+        "valor_residual": 117.5,
+        "valor_total": 137.5
     }];
 
     // Dados de exemplo para gás
     const dadosGas = [{
-        id: 'demo-gas-1',
-        valor_individual: 120.0,
-        valor_total: 125.0,
-        consumo: 10,
-        valor_medicao: 5.0,
-        valor_residual: 0.0,
-        leitura_unidade_id: {
-            leitura: 10,
-            data_da_leitura: '2025-03-17',
-            mes_de_referencia: '2025-02-17',
-            foto_id: null
-        },
-        leitura_anterior: {
-            leitura: null,
-            data_da_leitura: null,
-            foto_id: null
-        },
-        data_da_proxima_leitura: '2025-04-17'
+        "usuario_id": "5f33de30-8c44-4d04-b1f3-ad4dc383fb31",
+        "mes_de_referencia": "2025-02-17",
+        "data_da_leitura": "2025-04-08",
+        "data_leitura_anterior": "2025-04-11",
+        "data_da_proxima_leitura": "2025-04-16",
+        "leitura_atual": 5,
+        "leitura_anterior": 2,
+        "foto_atual_id": null,
+        "foto_anterior_id": null,
+        "consumo": 3,
+        "valor_de_medicao": 5.0,
+        "valor_individual": 96.6,
+        "valor_residual": 0,
+        "valor_total": 101.6
     }];
 
     // Organiza todos os dados em um objeto
     const dadosDemo = {
-        agua_fria: dadosAguaFria,
-        agua_quente: dadosAguaQuente,
+        agua: dadosAgua,
         gas: dadosGas
     };
 

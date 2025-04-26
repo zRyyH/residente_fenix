@@ -7,7 +7,6 @@ import {
     getDadosConsumoLocal,
     criarDadosDemonstracao
 } from "@/lib/consumo";
-import { calcularConsumo } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Componentes Base
@@ -35,9 +34,9 @@ export default function Dashboard() {
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [dadosConsumo, setDadosConsumo] = useState({ agua_fria: [], agua_quente: [], gas: [] });
+    const [dadosConsumo, setDadosConsumo] = useState({ agua: [], gas: [] });
     const [apiStatus, setApiStatus] = useState(null);
-    const [tipoConsumoAtivo, setTipoConsumoAtivo] = useState("agua_fria");
+    const [tipoConsumoAtivo, setTipoConsumoAtivo] = useState("agua");
 
     // Função para carregar dados
     const carregarDados = async () => {
@@ -54,7 +53,7 @@ export default function Dashboard() {
 
             // Primeiro tenta carregar dados locais para exibição rápida
             const dadosLocais = getDadosConsumoLocal();
-            if (dadosLocais && (dadosLocais.agua_fria.length > 0 || dadosLocais.agua_quente.length > 0 || dadosLocais.gas.length > 0)) {
+            if (dadosLocais && (dadosLocais.agua.length > 0 || dadosLocais.gas.length > 0)) {
                 setDadosConsumo(dadosLocais);
             }
 
@@ -62,8 +61,7 @@ export default function Dashboard() {
                 // Em seguida, busca dados atualizados da API
                 const dadosAtualizados = await obterDadosConsumo();
                 if (dadosAtualizados && (
-                    dadosAtualizados.agua_fria.length > 0 ||
-                    dadosAtualizados.agua_quente.length > 0 ||
+                    dadosAtualizados.agua.length > 0 ||
                     dadosAtualizados.gas.length > 0
                 )) {
                     setDadosConsumo(dadosAtualizados);
@@ -72,8 +70,7 @@ export default function Dashboard() {
                         mensagem: 'Dados atualizados com sucesso'
                     });
                 } else if (
-                    (!dadosLocais.agua_fria || dadosLocais.agua_fria.length === 0) &&
-                    (!dadosLocais.agua_quente || dadosLocais.agua_quente.length === 0) &&
+                    (!dadosLocais.agua || dadosLocais.agua.length === 0) &&
                     (!dadosLocais.gas || dadosLocais.gas.length === 0)
                 ) {
                     // Se não tiver dados locais e a API não retornou nada, usa dados de demonstração
@@ -88,8 +85,7 @@ export default function Dashboard() {
                 console.error("Erro na API:", apiError);
 
                 if (
-                    (!dadosLocais.agua_fria || dadosLocais.agua_fria.length === 0) &&
-                    (!dadosLocais.agua_quente || dadosLocais.agua_quente.length === 0) &&
+                    (!dadosLocais.agua || dadosLocais.agua.length === 0) &&
                     (!dadosLocais.gas || dadosLocais.gas.length === 0)
                 ) {
                     // Se não tiver dados locais, usa dados de demonstração
@@ -122,35 +118,24 @@ export default function Dashboard() {
 
     // Verifica qual tipo de consumo tem dados disponíveis
     const dadosDisponiveis = {
-        agua_fria: dadosConsumo.agua_fria && dadosConsumo.agua_fria.length > 0,
-        agua_quente: dadosConsumo.agua_quente && dadosConsumo.agua_quente.length > 0,
+        agua: dadosConsumo.agua && dadosConsumo.agua.length > 0,
         gas: dadosConsumo.gas && dadosConsumo.gas.length > 0
     };
 
     // Se não houver dados para o tipo selecionado, mas houver para outro tipo, seleciona o primeiro tipo disponível
     useEffect(() => {
         if (!dadosDisponiveis[tipoConsumoAtivo]) {
-            if (dadosDisponiveis.agua_fria) {
-                setTipoConsumoAtivo('agua_fria');
-            } else if (dadosDisponiveis.agua_quente) {
-                setTipoConsumoAtivo('agua_quente');
+            if (dadosDisponiveis.agua) {
+                setTipoConsumoAtivo('agua');
             } else if (dadosDisponiveis.gas) {
                 setTipoConsumoAtivo('gas');
             }
         }
     }, [dadosConsumo, tipoConsumoAtivo, dadosDisponiveis]);
 
-    // Obtém os dados da leitura atual e anterior do tipo selecionado
+    // Obtém os dados do item mais recente do tipo selecionado
     const dadosAtuais = dadosConsumo[tipoConsumoAtivo] || [];
     const dadoRecente = dadosAtuais[0] || {};
-    const leituraAtual = dadoRecente.leitura_unidade_id || null;
-    const leituraAnterior = dadoRecente.leitura_anterior || null;
-
-    // Calcula consumo se não disponível na API
-    const consumo = dadoRecente.consumo || calcularConsumo(
-        leituraAtual?.leitura,
-        leituraAnterior?.leitura
-    );
 
     // Função para alterar o tipo de consumo
     const alterarTipoConsumo = (tipo) => {
@@ -159,15 +144,13 @@ export default function Dashboard() {
 
     // Labels personalizados por tipo de consumo
     const unidadesMedida = {
-        agua_fria: "m³",
-        agua_quente: "m³",
+        agua: "m³",
         gas: "m³"
     };
 
     // Títulos personalizados por tipo de consumo
     const titulos = {
-        agua_fria: "Água Fria",
-        agua_quente: "Água Quente",
+        agua: "Água",
         gas: "Gás"
     };
 
@@ -205,23 +188,23 @@ export default function Dashboard() {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                             {/* Cards principais */}
                                             <CurrentReadingCard
-                                                leituraAtual={leituraAtual}
+                                                dadoRecente={dadoRecente}
                                                 unidadeMedida={unidadesMedida[tipoConsumoAtivo]}
                                                 titulo={`Leitura Atual - ${titulos[tipoConsumoAtivo]}`}
+                                                tipoConsumo={tipoConsumoAtivo}
                                             />
 
                                             <BillingCard
                                                 valorTotal={dadoRecente.valor_total}
-                                                mesReferencia={leituraAtual?.mes_de_referencia}
+                                                mesReferencia={dadoRecente.mes_de_referencia}
                                                 titulo={`Fatura - ${titulos[tipoConsumoAtivo]}`}
                                             />
 
                                             <ConsumptionCard
-                                                consumo={consumo}
-                                                leituraAnterior={leituraAnterior?.leitura}
-                                                leituraAtual={leituraAtual?.leitura}
+                                                dadoRecente={dadoRecente}
                                                 unidadeMedida={unidadesMedida[tipoConsumoAtivo]}
                                                 titulo={`Consumo - ${titulos[tipoConsumoAtivo]}`}
+                                                tipoConsumo={tipoConsumoAtivo}
                                             />
                                         </div>
 
@@ -233,7 +216,7 @@ export default function Dashboard() {
                                         {/* Detalhes da fatura */}
                                         <div className="mb-6">
                                             <DetailedBillingInfo
-                                                valorMedicao={dadoRecente.valor_medicao}
+                                                valorMedicao={dadoRecente.valor_de_medicao}
                                                 valorIndividual={dadoRecente.valor_individual}
                                                 valorResidual={dadoRecente.valor_residual}
                                                 valorTotal={dadoRecente.valor_total}
@@ -244,9 +227,9 @@ export default function Dashboard() {
                                         {/* Fotos do hidrômetro */}
                                         <div className="mb-6">
                                             <MeterPhotos
-                                                leituraAtual={leituraAtual}
-                                                leituraAnterior={leituraAnterior}
+                                                dadoRecente={dadoRecente}
                                                 titulo={`Comprovantes - ${titulos[tipoConsumoAtivo]}`}
+                                                tipoConsumo={tipoConsumoAtivo}
                                             />
                                         </div>
 
@@ -255,6 +238,7 @@ export default function Dashboard() {
                                             dadosConsumo={dadosAtuais}
                                             unidadeMedida={unidadesMedida[tipoConsumoAtivo]}
                                             titulo={`Histórico - ${titulos[tipoConsumoAtivo]}`}
+                                            tipoConsumo={tipoConsumoAtivo}
                                         />
                                     </>
                                 ) : (
